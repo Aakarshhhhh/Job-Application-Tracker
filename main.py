@@ -1,5 +1,14 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from database import Base,engine
+from models import Application
+from database import get_db
+from models import Application
+from schemas import ApplicationCreate
+from sqlalchemy.orm import Session
+from fastapi import Depends
+
+Base.metadata.create_all(bind = engine)
 app = FastAPI()
 
 @app.get("/")
@@ -9,12 +18,6 @@ def get_message():
 @app.get("/about")
 def about():
     return {"Message": "Job Application Tracker"}
-
-
-class ApplicationCreate(BaseModel):
-    company_name: str
-    position: str
-    status: str
 
 next_id = 1
 applications = []
