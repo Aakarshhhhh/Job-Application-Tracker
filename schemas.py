@@ -7,4 +7,3 @@ class ApplicationCreate(BaseModel):
     position : str
     application_link : Optional[str] = None
     notes : Optional[str] = None
-    

@@ -11,8 +11,3 @@ class Application(Base):
     application_link = Column(String)
     notes = Column(String)
     created_at = Column(TIMESTAMP(timezone = True),server_default = text('now()'))
-    
-
-
-    
-

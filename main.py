@@ -13,39 +13,46 @@ app = FastAPI()
 
 @app.get("/")
 def get_message():
+    return {"Message": "TESTING NEW CODE"}
+
+@app.get("/")
+def get_message():
     return {"Message" : "My First API"}
 
 @app.get("/about")
 def about():
     return {"Message": "Job Application Tracker"}
 
-next_id = 1
-applications = []
 
 @app.post("/applications")
-def create_application(application:ApplicationCreate):
-    global next_id
-    
-    new_application = {
-        "id": next_id,
-        "company_name": application.company_name,
-            "position": application.position,
-            "status": application.status
-            }
-    applications.append(new_application)
-    next_id += 1
+def create_application(application:ApplicationCreate,db: Session = Depends(get_db)):
+    print("POST route called")
+    new_application = Application(
+        company_name = application.company_name,
+        status = application.status,
+        position = application.position,
+        application_link = application.application_link,
+        notes = application.notes
+    )
+    print("POST route called")
+    db.add(new_application)
+    db.commit()
+    db.refresh(new_application)
 
     return new_application
+    
 
 @app.get("/applications")
-def get_application():
-    return {"Applications": applications}
+def get_application(db: Session = Depends(get_db)):
+    applications = db.query(applications).all()
+    return applications
 
 @app.get("/applications/{id}")
-def get_application():
-    for application in applications:
-        if application["id"] == id:
-            return application
+def get_application(id: int,db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == id).first()
+    if application is None:
+        return {"Message": "Application not found"}
+    return application
 
 @app.put("/applications/{id}")
 def update_application(item_id: int, application: ApplicationCreate):
