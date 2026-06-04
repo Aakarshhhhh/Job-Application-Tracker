@@ -55,21 +55,24 @@ def get_application(id: int,db: Session = Depends(get_db)):
     return application
 
 @app.put("/applications/{id}")
-def update_application(item_id: int, application: ApplicationCreate):
-    for app in applications:
-        if app["id"] == item_id:
-            app["company_name"] = application.company_name
-            app["position"] = application.position
-            app["status"] = application.status
-            return {"message": "Successfully updated data"}
-        
-    return {"Message": "Error data not Valid"}
+def update_application(id: int,updated_application: ApplicationCreate, db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == id).first()
+    if application is None:
+        return {"Message": "Data not found"}
+    application.company_name = updated_application.company_name
+    application.status = updated_application.status
+    application.position = updated_application.position
+    application.application_link = updated_application.application_link
+    application.notes = updated_application.notes
+    db.commit()
+    db.refresh(application)
+    return application
 
 @app.delete("/applications/{id}")
-def delete_application(item_id: int):
-    for app in applications:
-        if app["id"] == item_id:
-            applications.remove(app)
-            return {"message": "Application removed Successfully"}
-        
-    return {"Message": "Data not found"}
+def delete_application(id: int,db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == id).first()
+    if application is None:
+        return {"Mesage": "Data not found"}
+    db.delete(application)
+    db.commit()
+    return {"Message": "Data deleted Successfully"}
