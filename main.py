@@ -1,19 +1,15 @@
 from fastapi import FastAPI
-from pydantic import BaseModel
 from database import Base,engine
-from models import Application
 from database import get_db
 from models import Application
 from schemas import ApplicationCreate
 from sqlalchemy.orm import Session
 from fastapi import Depends
+from fastapi import HTTPException
 
 Base.metadata.create_all(bind = engine)
 app = FastAPI()
 
-@app.get("/")
-def get_message():
-    return {"Message": "TESTING NEW CODE"}
 
 @app.get("/")
 def get_message():
@@ -26,7 +22,6 @@ def about():
 
 @app.post("/applications")
 def create_application(application:ApplicationCreate,db: Session = Depends(get_db)):
-    print("POST route called")
     new_application = Application(
         company_name = application.company_name,
         status = application.status,
@@ -43,22 +38,22 @@ def create_application(application:ApplicationCreate,db: Session = Depends(get_d
     
 
 @app.get("/applications")
-def get_application(db: Session = Depends(get_db)):
-    applications = db.query(applications).all()
+def get_applications(db: Session = Depends(get_db)):
+    applications = db.query(Application).all()
     return applications
 
 @app.get("/applications/{id}")
 def get_application(id: int,db: Session = Depends(get_db)):
     application = db.query(Application).filter(Application.id == id).first()
     if application is None:
-        return {"Message": "Application not found"}
+        raise HTTPException(status_code = 404 ,detail = "Application not Found")
     return application
 
 @app.put("/applications/{id}")
 def update_application(id: int,updated_application: ApplicationCreate, db: Session = Depends(get_db)):
     application = db.query(Application).filter(Application.id == id).first()
     if application is None:
-        return {"Message": "Data not found"}
+        raise HTTPException(status_code = 404, detail = "Application not found")
     application.company_name = updated_application.company_name
     application.status = updated_application.status
     application.position = updated_application.position
@@ -72,7 +67,7 @@ def update_application(id: int,updated_application: ApplicationCreate, db: Sessi
 def delete_application(id: int,db: Session = Depends(get_db)):
     application = db.query(Application).filter(Application.id == id).first()
     if application is None:
-        return {"Mesage": "Data not found"}
+        raise HTTPException(status_code = 404, detail = "Application not found")
     db.delete(application)
     db.commit()
     return {"Message": "Data deleted Successfully"}
