@@ -1,14 +1,19 @@
 from fastapi import FastAPI
 from database import Base,engine
 from database import get_db
-from models import Application
+from models import Application, User
 from schemas import ApplicationCreate, ApplicationResponse
+from schemas import UserCreate, UserResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from fastapi import HTTPException
+from typing import List
+from passlib.context import CryptContext
 
 Base.metadata.create_all(bind = engine)
 app = FastAPI()
+
+pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
 
 
 @app.get("/")
@@ -20,7 +25,7 @@ def about():
     return {"Message": "Job Application Tracker"}
 
 
-@app.post("/applications")
+@app.post("/applications",response_model = ApplicationResponse)
 def create_application(application:ApplicationCreate,db: Session = Depends(get_db)):
     new_application = Application(
         company_name = application.company_name,
@@ -37,7 +42,7 @@ def create_application(application:ApplicationCreate,db: Session = Depends(get_d
     return new_application
     
 
-@app.get("/applications")
+@app.get("/applications",response_model = List[ApplicationResponse])
 def get_applications(db: Session = Depends(get_db)):
     applications = db.query(Application).all()
     return applications
@@ -49,7 +54,7 @@ def get_application(id: int,db: Session = Depends(get_db)):
         raise HTTPException(status_code = 404 ,detail = "Application not Found")
     return application
 
-@app.put("/applications/{id}")
+@app.put("/applications/{id}",response_model = ApplicationResponse)
 def update_application(id: int,updated_application: ApplicationCreate, db: Session = Depends(get_db)):
     application = db.query(Application).filter(Application.id == id).first()
     if application is None:
@@ -71,3 +76,17 @@ def delete_application(id: int,db: Session = Depends(get_db)):
     db.delete(application)
     db.commit()
     return {"Message": "Data deleted Successfully"}
+
+@app.post("/users", response_model = UserResponse)
+def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    hashed_password = pwd_context.hash(user.password)
+    new_user = User(
+        email = user.email,
+        hashed_password = hashed_password
+    )
+
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user

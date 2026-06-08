@@ -17,6 +17,18 @@ class ApplicationResponse(BaseModel):
     application_link: Optional[str]
     notes: Optional[str]
     created_at: datetime
-    class config:
+    class Config:
         from_attributes = True
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    email: str
+    created_at: datetime
+    class Config:
+        from_attributes = True
+        
     
