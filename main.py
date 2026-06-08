@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from database import Base,engine
 from database import get_db
 from models import Application
-from schemas import ApplicationCreate
+from schemas import ApplicationCreate, ApplicationResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from fastapi import HTTPException
@@ -42,7 +42,7 @@ def get_applications(db: Session = Depends(get_db)):
     applications = db.query(Application).all()
     return applications
 
-@app.get("/applications/{id}")
+@app.get("/applications/{id}",response_model = ApplicationResponse)
 def get_application(id: int,db: Session = Depends(get_db)):
     application = db.query(Application).filter(Application.id == id).first()
     if application is None:
