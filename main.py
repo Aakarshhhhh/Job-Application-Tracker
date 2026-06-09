@@ -3,7 +3,7 @@ from database import Base,engine
 from database import get_db
 from models import Application, User
 from schemas import ApplicationCreate, ApplicationResponse
-from schemas import UserCreate, UserResponse
+from schemas import UserCreate, UserResponse, UserLogin
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from fastapi import HTTPException
@@ -79,6 +79,8 @@ def delete_application(id: int,db: Session = Depends(get_db)):
 
 @app.post("/users", response_model = UserResponse)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    print(user.password)
+    print(len(user.password))
     hashed_password = pwd_context.hash(user.password)
     new_user = User(
         email = user.email,
@@ -90,3 +92,13 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     db.refresh(new_user)
 
     return new_user
+
+@app.post("/login")
+def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == user_credentials.email).first()
+    if user is None:
+        raise HTTPException(status_code = 401, detail = "Invalid Credentials")
+    if not pwd_context.verify(user_credentials.password, user.hashed_password):
+        raise HTTPException(status_code = 401, detail = "Invalid Credentials")
+    return {"Message": "Login Successful"}
+    
