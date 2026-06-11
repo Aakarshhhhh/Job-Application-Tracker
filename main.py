@@ -11,6 +11,7 @@ from typing import List
 from passlib.context import CryptContext
 from jose import JWTError,jwt
 from datetime import datetime, timedelta, timezone
+from fastapi.security import OAuth2PasswordBearer
 
 Base.metadata.create_all(bind = engine)
 app = FastAPI()
@@ -20,6 +21,8 @@ pwd_context = CryptContext(schemes = ["bcrypt"], deprecated = "auto")
 SECRET_KEY = "mysecretkey"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl = "login")
 
 @app.get("/")
 def get_message():
@@ -111,6 +114,16 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm = ALGORITHM)
     return encoded_jwt
 
+def get_current_user(token: str, db: Session = Depends(get_db)):
+    payload = jwt.decode(token, SECRET_KEY, algorithms = [ALGORITHM])
+    user_id = payload["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code = 401, detail = "Unauthorized User")
+    return user
+
+
+
 @app.post("/login")
 def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == user_credentials.email).first()
@@ -120,5 +133,4 @@ def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code = 401, detail = "Invalid Credentials")
     access_token = create_access_token(data = {"user_id": user.id})
     return {"access_token": access_token, "token_type": "bearer"}
-
    
