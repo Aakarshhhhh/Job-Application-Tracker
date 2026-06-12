@@ -32,23 +32,34 @@ def get_message():
 def about():
     return {"Message": "Job Application Tracker"}
 
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms = [ALGORITHM])
+    except JWTError:
+        raise HTTPException(status_code = 401, detail = "Could not validate credentials")
+    user_id = payload["user_id"]
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code = 401, detail = "Unauthorized User")
+    return user
+
 
 @app.post("/applications",response_model = ApplicationResponse)
-def create_application(application:ApplicationCreate,db: Session = Depends(get_db)):
+def create_application(application:ApplicationCreate,db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
     new_application = Application(
         company_name = application.company_name,
         status = application.status,
         position = application.position,
         application_link = application.application_link,
-        notes = application.notes
+        notes = application.notes,
+        owner_id = current_user.id
     )
-    print("POST route called")
+
     db.add(new_application)
     db.commit()
     db.refresh(new_application)
 
     return new_application
-    
 
 @app.get("/applications",response_model = List[ApplicationResponse])
 def get_applications(db: Session = Depends(get_db)):
@@ -114,15 +125,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm = ALGORITHM)
     return encoded_jwt
 
-def get_current_user(token: str, db: Session = Depends(get_db)):
-    payload = jwt.decode(token, SECRET_KEY, algorithms = [ALGORITHM])
-    user_id = payload["user_id"]
-    user = db.query(User).filter(User.id == user_id).first()
-    if not user:
-        raise HTTPException(status_code = 401, detail = "Unauthorized User")
-    return user
-
-
 
 @app.post("/login")
 def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
@@ -133,4 +135,14 @@ def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code = 401, detail = "Invalid Credentials")
     access_token = create_access_token(data = {"user_id": user.id})
     return {"access_token": access_token, "token_type": "bearer"}
+
+@app.get("/me")
+def get_me(current_user: User = Depends(get_current_user)):
+    return current_user
+
+@app.get("/test_token")
+def test_token(token: str):
+    payload = jwt.decode(token, SECRET_KEY, algorithms = [ALGORITHM])
+
+    return payload
    

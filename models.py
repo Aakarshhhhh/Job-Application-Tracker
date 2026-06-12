@@ -1,5 +1,5 @@
 from database import Base
-from sqlalchemy import  Column, Integer, String, TIMESTAMP, Boolean, text
+from sqlalchemy import  Column, Integer, String, TIMESTAMP, Boolean, text, ForeignKey
 
 class Application(Base):
     __tablename__ = "applications"
@@ -11,6 +11,7 @@ class Application(Base):
     application_link = Column(String)
     notes = Column(String)
     created_at = Column(TIMESTAMP(timezone = True),server_default = text('now()'))
+    owner_id = Column(Integer, ForeignKey("users.id"), nullable = False)
 
 class User(Base):
     __tablename__ = "users"
