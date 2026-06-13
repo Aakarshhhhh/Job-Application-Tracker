@@ -3,7 +3,7 @@ from database import Base,engine
 from database import get_db
 from models import Application, User
 from schemas import ApplicationCreate, ApplicationResponse
-from schemas import UserCreate, UserResponse, UserLogin
+from schemas import UserCreate, UserResponse
 from sqlalchemy.orm import Session
 from fastapi import Depends
 from fastapi import HTTPException
@@ -11,7 +11,7 @@ from typing import List
 from passlib.context import CryptContext
 from jose import JWTError,jwt
 from datetime import datetime, timedelta, timezone
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 Base.metadata.create_all(bind = engine)
 app = FastAPI()
@@ -33,6 +33,7 @@ def about():
     return {"Message": "Job Application Tracker"}
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    print("TOKEN:", token)
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms = [ALGORITHM])
     except JWTError:
@@ -45,7 +46,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
 
 
 @app.post("/applications",response_model = ApplicationResponse)
-def create_application(application:ApplicationCreate,db: Session = Depends(get_db),current_user: User = Depends(get_current_user)):
+def create_application(application:ApplicationCreate,db: Session = Depends(get_db),current_user = Depends(get_current_user)):
     new_application = Application(
         company_name = application.company_name,
         status = application.status,
@@ -62,20 +63,20 @@ def create_application(application:ApplicationCreate,db: Session = Depends(get_d
     return new_application
 
 @app.get("/applications",response_model = List[ApplicationResponse])
-def get_applications(db: Session = Depends(get_db)):
-    applications = db.query(Application).all()
+def get_applications(db: Session = Depends(get_db),current_user = Depends(get_current_user)):
+    applications = db.query(Application).filter(Application.owner_id == current_user.id).all()
     return applications
 
 @app.get("/applications/{id}",response_model = ApplicationResponse)
-def get_application(id: int,db: Session = Depends(get_db)):
-    application = db.query(Application).filter(Application.id == id).first()
+def get_application(current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.owner_id == current_user.id).first()
     if application is None:
         raise HTTPException(status_code = 404 ,detail = "Application not Found")
     return application
 
 @app.put("/applications/{id}",response_model = ApplicationResponse)
-def update_application(id: int,updated_application: ApplicationCreate, db: Session = Depends(get_db)):
-    application = db.query(Application).filter(Application.id == id).first()
+def update_application(updated_application: ApplicationCreate, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.owner_id == current_user.id).first()
     if application is None:
         raise HTTPException(status_code = 404, detail = "Application not found")
     application.company_name = updated_application.company_name
@@ -88,8 +89,8 @@ def update_application(id: int,updated_application: ApplicationCreate, db: Sessi
     return application
 
 @app.delete("/applications/{id}")
-def delete_application(id: int,db: Session = Depends(get_db)):
-    application = db.query(Application).filter(Application.id == id).first()
+def delete_application(current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.owner_id == current_user.id).first()
     if application is None:
         raise HTTPException(status_code = 404, detail = "Application not found")
     db.delete(application)
@@ -127,8 +128,10 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
 
 @app.post("/login")
-def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == user_credentials.email).first()
+def login_user(user_credentials: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    print("Username:", user_credentials.username)
+    print("Password:", user_credentials.password)
+    user = db.query(User).filter(User.email == user_credentials.username).first()
     if user is None:
         raise HTTPException(status_code = 401, detail = "Invalid Credentials")
     if not pwd_context.verify(user_credentials.password, user.hashed_password):
@@ -136,7 +139,7 @@ def login_user(user_credentials: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data = {"user_id": user.id})
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.get("/me")
+@app.get("/me", response_model = UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
 
