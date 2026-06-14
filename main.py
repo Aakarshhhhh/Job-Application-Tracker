@@ -68,15 +68,15 @@ def get_applications(db: Session = Depends(get_db),current_user = Depends(get_cu
     return applications
 
 @app.get("/applications/{id}",response_model = ApplicationResponse)
-def get_application(current_user = Depends(get_current_user),db: Session = Depends(get_db)):
-    application = db.query(Application).filter(Application.owner_id == current_user.id).first()
+def get_application(id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == id, Application.owner_id == current_user.id).first()
     if application is None:
         raise HTTPException(status_code = 404 ,detail = "Application not Found")
     return application
 
 @app.put("/applications/{id}",response_model = ApplicationResponse)
-def update_application(updated_application: ApplicationCreate, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
-    application = db.query(Application).filter(Application.owner_id == current_user.id).first()
+def update_application(id: int, updated_application: ApplicationCreate, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == id, Application.owner_id == current_user.id).first()
     if application is None:
         raise HTTPException(status_code = 404, detail = "Application not found")
     application.company_name = updated_application.company_name
@@ -89,8 +89,8 @@ def update_application(updated_application: ApplicationCreate, current_user = De
     return application
 
 @app.delete("/applications/{id}")
-def delete_application(current_user = Depends(get_current_user),db: Session = Depends(get_db)):
-    application = db.query(Application).filter(Application.owner_id == current_user.id).first()
+def delete_application(id: int, current_user = Depends(get_current_user),db: Session = Depends(get_db)):
+    application = db.query(Application).filter(Application.id == id, Application.owner_id == current_user.id).first()
     if application is None:
         raise HTTPException(status_code = 404, detail = "Application not found")
     db.delete(application)
